@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    name: Create Release ZIP
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Update manifest version
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${VERSION#v}"  # Remove 'v' prefix if present
+          sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" custom_components/fmi_solar_forecast/manifest.json
+
+      - name: Create ZIP file
+        run: |
+          cd custom_components
+          zip -r ../fmi_solar_forecast.zip fmi_solar_forecast/
+          cd ..
+
+      - name: Upload ZIP to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: fmi_solar_forecast.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update HACS repository
+        run: |
+          echo "Release ${{ steps.version.outputs.version }} created with ZIP file"
+          echo "HACS will automatically detect this release"

@@ -24,16 +24,15 @@ jobs:
 
       - name: Create ZIP file
         run: |
-          cd custom_components
-          zip -r ../fmi_solar_forecast.zip fmi_solar_forecast/
-          cd ..
+          cd custom_components/fmi_solar_forecast/
+          zip ../../fmi_solar_forecast.zip ./* -x '.*'
 
       - name: Upload ZIP to release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: fmi_solar_forecast.zip
+        uses: JasonEtco/upload-to-release@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: ./fmi_solar_forecast.zip application/zip     
 
       - name: Update HACS repository
         run: |

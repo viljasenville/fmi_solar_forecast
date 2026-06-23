@@ -1,7 +1,7 @@
 {
   "name": "FMI Solar Forecast",
   "content_in_root": false,
-  "filename": "fmi_solar_forecast",
+  "filename": "fmi_solar_forecast.zip",
   "render_readme": true,
   "homeassistant": "2026.1.0",
   "zip_release": true,

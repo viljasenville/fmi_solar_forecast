@@ -1,0 +1,76 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "FMI Solar Forecast — Location",
+        "description": "Enter a name and coordinates for your solar installation.\n\nCoverage area: {coverage}",
+        "data": {
+          "name": "Name",
+          "latitude": "Latitude",
+          "longitude": "Longitude"
+        }
+      },
+      "panel_group": {
+        "title": "FMI Solar Forecast — Panel Group {group_num}",
+        "description": "Configure a panel group.\n\n**Tilt**: {tilt_hint}\n**Azimuth**: {azimuth_hint}",
+        "data": {
+          "tilt": "Tilt (degrees, 0–90)",
+          "azimuth": "Azimuth (degrees, 0–360)",
+          "power_kw": "Nominal power (kW)",
+          "add_another": "Add another panel group"
+        }
+      },
+      "options": {
+        "title": "FMI Solar Forecast — Advanced Options",
+        "description": "These settings affect the clear-sky fallback and polling interval.",
+        "data": {
+          "default_air_temp": "Default air temperature for clear-sky (°C)",
+          "default_albedo": "Ground reflectivity / albedo (0–1)",
+          "update_interval": "Update interval (minutes)"
+        }
+      }
+    },
+    "error": {
+      "outside_coverage": "The coordinates are outside FMI's forecast coverage area (lat 54–72°N, lon 4–32°E).",
+      "cannot_connect": "Unable to connect to FMI open data.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "A FMI Solar Forecast entry for this location already exists."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "FMI Solar Forecast — Options",
+        "data": {
+          "name": "Name",
+          "latitude": "Latitude",
+          "longitude": "Longitude",
+          "default_air_temp": "Default air temperature for clear-sky (°C)",
+          "default_albedo": "Ground reflectivity / albedo (0–1)",
+          "update_interval": "Update interval (minutes)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "power_production_now": {
+        "name": "Power production now"
+      },
+      "energy_production_today": {
+        "name": "Energy production today"
+      },
+      "energy_production_tomorrow": {
+        "name": "Energy production tomorrow"
+      },
+      "energy_next_hour": {
+        "name": "Energy next hour"
+      },
+      "peak_power_today": {
+        "name": "Peak power today"
+      }
+    }
+  }
+}

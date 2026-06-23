@@ -1,0 +1,215 @@
+"""Config flow for FMI Solar Forecast integration."""
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+import voluptuous as vol
+
+from homeassistant import config_entries
+from homeassistant.core import callback
+from homeassistant.data_entry_flow import FlowResult
+
+from .const import (
+    CONF_AZIMUTH,
+    CONF_DEFAULT_AIR_TEMP,
+    CONF_DEFAULT_ALBEDO,
+    CONF_LATITUDE,
+    CONF_LONGITUDE,
+    CONF_NAME,
+    CONF_PANEL_GROUPS,
+    CONF_POWER_KW,
+    CONF_TILT,
+    CONF_UPDATE_INTERVAL,
+    DEFAULT_AIR_TEMP,
+    DEFAULT_ALBEDO,
+    DEFAULT_AZIMUTH,
+    DEFAULT_POWER_KW,
+    DEFAULT_TILT,
+    DEFAULT_UPDATE_INTERVAL,
+    DOMAIN,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class FmiSolarForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle the config flow for FMI Solar Forecast."""
+
+    VERSION = 1
+
+    def __init__(self) -> None:
+        """Initialize the config flow."""
+        self._data: dict[str, Any] = {}
+        self._panel_groups: list[dict] = []
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the initial step: name and location."""
+        errors: dict[str, str] = {}
+
+        default_lat = self.hass.config.latitude
+        default_lon = self.hass.config.longitude
+
+        if user_input is not None:
+            lat = user_input[CONF_LATITUDE]
+            lon = user_input[CONF_LONGITUDE]
+            if not (54.0 <= lat <= 72.0 and 4.0 <= lon <= 32.0):
+                errors["base"] = "outside_coverage"
+            else:
+                self._data.update(user_input)
+                return await self.async_step_panel_group()
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_NAME, default="Home Solar"): str,
+                vol.Required(CONF_LATITUDE, default=round(default_lat, 6)): vol.All(
+                    vol.Coerce(float), vol.Range(min=54.0, max=72.0)
+                ),
+                vol.Required(CONF_LONGITUDE, default=round(default_lon, 6)): vol.All(
+                    vol.Coerce(float), vol.Range(min=4.0, max=32.0)
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={
+                "coverage": "Finland, Scandinavia, and Baltic countries (lat 54–72°N, lon 4–32°E)"
+            },
+        )
+
+    async def async_step_panel_group(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure a panel group (tilt, azimuth, power)."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            self._panel_groups.append(
+                {
+                    CONF_TILT: user_input[CONF_TILT],
+                    CONF_AZIMUTH: user_input[CONF_AZIMUTH],
+                    CONF_POWER_KW: user_input[CONF_POWER_KW],
+                }
+            )
+            if user_input.get("add_another", False):
+                return await self.async_step_panel_group()
+
+            self._data[CONF_PANEL_GROUPS] = self._panel_groups
+            return await self.async_step_options()
+
+        group_num = len(self._panel_groups) + 1
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_TILT, default=DEFAULT_TILT): vol.All(
+                    vol.Coerce(float), vol.Range(min=0, max=90)
+                ),
+                vol.Required(CONF_AZIMUTH, default=DEFAULT_AZIMUTH): vol.All(
+                    vol.Coerce(float), vol.Range(min=0, max=360)
+                ),
+                vol.Required(CONF_POWER_KW, default=DEFAULT_POWER_KW): vol.All(
+                    vol.Coerce(float), vol.Range(min=0.1, max=1000)
+                ),
+                vol.Optional("add_another", default=False): bool,
+            }
+        )
+
+        return self.async_show_form(
+            step_id="panel_group",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={
+                "group_num": str(group_num),
+                "azimuth_hint": "0=N, 90=E, 180=S (default), 270=W",
+                "tilt_hint": "0=flat, 90=vertical. Typical roof: 15–35°",
+            },
+        )
+
+    async def async_step_options(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure optional parameters."""
+        if user_input is not None:
+            self._data.update(user_input)
+            return self.async_create_entry(
+                title=self._data[CONF_NAME], data=self._data
+            )
+
+        schema = vol.Schema(
+            {
+                vol.Optional(CONF_DEFAULT_AIR_TEMP, default=DEFAULT_AIR_TEMP): vol.All(
+                    vol.Coerce(float), vol.Range(min=-40, max=50)
+                ),
+                vol.Optional(CONF_DEFAULT_ALBEDO, default=DEFAULT_ALBEDO): vol.All(
+                    vol.Coerce(float), vol.Range(min=0.0, max=1.0)
+                ),
+                vol.Optional(CONF_UPDATE_INTERVAL, default=DEFAULT_UPDATE_INTERVAL): vol.All(
+                    vol.Coerce(int), vol.Range(min=30, max=360)
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="options",
+            data_schema=schema,
+            description_placeholders={
+                "air_temp_hint": "Default air temperature for clear-sky fallback (°C)",
+                "albedo_hint": "Ground reflectivity 0–1 (snow=0.7, grass=0.2)",
+                "update_hint": "How often to refresh the forecast (minutes, min 30)",
+            },
+        )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> FmiSolarOptionsFlow:
+        """Return the options flow."""
+        return FmiSolarOptionsFlow()
+
+
+class FmiSolarOptionsFlow(config_entries.OptionsFlow):
+    """Options flow for reconfiguring FMI Solar Forecast."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle options — name, location, and advanced settings."""
+        data = self.config_entry.data
+
+        if user_input is not None:
+            # Persist updated values back into config entry data
+            return self.async_create_entry(title="", data=user_input)
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_NAME,
+                    default=data.get(CONF_NAME, "Home Solar"),
+                ): str,
+                vol.Required(
+                    CONF_LATITUDE,
+                    default=data.get(CONF_LATITUDE, round(self.hass.config.latitude, 6)),
+                ): vol.All(vol.Coerce(float), vol.Range(min=54.0, max=72.0)),
+                vol.Required(
+                    CONF_LONGITUDE,
+                    default=data.get(CONF_LONGITUDE, round(self.hass.config.longitude, 6)),
+                ): vol.All(vol.Coerce(float), vol.Range(min=4.0, max=32.0)),
+                vol.Optional(
+                    CONF_DEFAULT_AIR_TEMP,
+                    default=data.get(CONF_DEFAULT_AIR_TEMP, DEFAULT_AIR_TEMP),
+                ): vol.All(vol.Coerce(float), vol.Range(min=-40, max=50)),
+                vol.Optional(
+                    CONF_DEFAULT_ALBEDO,
+                    default=data.get(CONF_DEFAULT_ALBEDO, DEFAULT_ALBEDO),
+                ): vol.All(vol.Coerce(float), vol.Range(min=0.0, max=1.0)),
+                vol.Optional(
+                    CONF_UPDATE_INTERVAL,
+                    default=data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL),
+                ): vol.All(vol.Coerce(int), vol.Range(min=30, max=360)),
+            }
+        )
+
+        return self.async_show_form(step_id="init", data_schema=schema)

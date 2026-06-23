@@ -1,0 +1,15 @@
+{
+  "domain": "fmi_solar_forecast",
+  "name": "FMI Solar Forecast",
+  "version": "1.0.0",
+  "documentation": "https://github.com/viljasenville/fmi_solar_forecast",
+  "issue_tracker": "https://github.com/viljasenville/fmi_solar_forecast/issues",
+  "requirements": [
+    "fmi_pv_forecast @ https://github.com/fmidev/fmi-open-pv-forecast-packaged/raw/main/dist/fmi_pv_forecast-0.1.0-py3-none-any.whl"
+  ],
+  "dependencies": [],
+  "codeowners": ["@viljasenville"],
+  "iot_class": "cloud_polling",
+  "config_flow": true,
+  "integration_type": "service"
+}

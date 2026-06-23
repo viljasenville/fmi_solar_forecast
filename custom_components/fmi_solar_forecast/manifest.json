@@ -8,6 +8,6 @@
   "integration_type": "service",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/viljasenville/fmi_solar_forecast/issues",
-  "requirements": ["fmi_pv_forecast @ https://github.com/fmidev/fmi-open-pv-forecast-packaged/raw/main/dist/fmi_pv_forecast-0.1.0-py3-none-any.whl"],
+  "requirements": ["fmi_pv_forecast@https://github.com/fmidev/fmi-open-pv-forecast-packaged/raw/main/dist/fmi_pv_forecast-0.1.0-py3-none-any.whl"],
   "version": "1.0.0"
 }

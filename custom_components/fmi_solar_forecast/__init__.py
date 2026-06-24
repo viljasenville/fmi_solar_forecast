@@ -18,9 +18,11 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 SERVICE_CLEAR_HISTORY = "clear_history"
+SERVICE_REFRESH_FORECAST = "refresh_forecast"
 _ATTR_ENTRY_ID = "config_entry_id"
 
 _CLEAR_HISTORY_SCHEMA = vol.Schema({vol.Optional(_ATTR_ENTRY_ID): cv.string})
+_REFRESH_FORECAST_SCHEMA = vol.Schema({vol.Optional(_ATTR_ENTRY_ID): cv.string})
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -54,6 +56,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             schema=_CLEAR_HISTORY_SCHEMA,
         )
 
+    if not hass.services.has_service(DOMAIN, SERVICE_REFRESH_FORECAST):
+
+        async def _handle_refresh_forecast(call: ServiceCall) -> None:
+            entry_id: str | None = call.data.get(_ATTR_ENTRY_ID)
+            coordinators: dict[str, FmiSolarForecastCoordinator] = hass.data.get(DOMAIN, {})
+            targets = (
+                [coordinators[entry_id]]
+                if entry_id and entry_id in coordinators
+                else list(coordinators.values())
+            )
+            for coord in targets:
+                await coord.async_request_refresh()
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_REFRESH_FORECAST,
+            _handle_refresh_forecast,
+            schema=_REFRESH_FORECAST_SCHEMA,
+        )
+
     return True
 
 
@@ -63,6 +85,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
         if not hass.data.get(DOMAIN):
             hass.services.async_remove(DOMAIN, SERVICE_CLEAR_HISTORY)
+            hass.services.async_remove(DOMAIN, SERVICE_REFRESH_FORECAST)
     return unload_ok
 
 

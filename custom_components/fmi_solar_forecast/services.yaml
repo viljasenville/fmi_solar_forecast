@@ -9,3 +9,15 @@ clear_history:
       selector:
         config_entry:
           integration: fmi_solar_forecast
+
+refresh_forecast:
+  name: Refresh forecast
+  description: Manually triggers an immediate forecast update without waiting for the next scheduled interval.
+  fields:
+    config_entry_id:
+      name: FMI solar forecast instance
+      description: Which solar forecast instance to refresh. Leave empty to refresh all.
+      required: false
+      selector:
+        config_entry:
+          integration: fmi_solar_forecast

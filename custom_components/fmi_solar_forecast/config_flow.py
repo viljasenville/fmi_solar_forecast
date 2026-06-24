@@ -33,6 +33,17 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+def _format_groups_summary(groups: list[dict]) -> str:
+    if not groups:
+        return "No panel groups configured."
+    lines = []
+    for i, g in enumerate(groups, 1):
+        lines.append(
+            f"Group {i}: {g[CONF_TILT]}° tilt, {g[CONF_AZIMUTH]}° azimuth, {g[CONF_POWER_KW]} kW"
+        )
+    return "\n".join(lines)
+
+
 class FmiSolarForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle the config flow for FMI Solar Forecast."""
 
@@ -173,15 +184,34 @@ class FmiSolarForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class FmiSolarOptionsFlow(config_entries.OptionsFlow):
     """Options flow for reconfiguring FMI Solar Forecast."""
 
+    def __init__(self) -> None:
+        """Initialize the options flow."""
+        self._settings: dict[str, Any] = {}
+        self._panel_groups: list[dict] = []
+        self._original_groups: list[dict] = []
+        self._group_index: int = 0
+
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle options — name, location, and advanced settings."""
         data = self.config_entry.data
+        errors: dict[str, str] = {}
 
         if user_input is not None:
-            # Persist updated values back into config entry data
-            return self.async_create_entry(title="", data=user_input)
+            lat = user_input[CONF_LATITUDE]
+            lon = user_input[CONF_LONGITUDE]
+            if not (54.0 <= lat <= 72.0 and 4.0 <= lon <= 32.0):
+                errors["base"] = "outside_coverage"
+            else:
+                self._settings = dict(user_input)
+                self._original_groups = list(data.get(CONF_PANEL_GROUPS, []))
+                self._panel_groups = []
+                self._group_index = 0
+                return await self.async_step_panel_group()
+
+        existing_groups = data.get(CONF_PANEL_GROUPS, [])
+        groups_summary = _format_groups_summary(existing_groups)
 
         schema = vol.Schema(
             {
@@ -212,4 +242,95 @@ class FmiSolarOptionsFlow(config_entries.OptionsFlow):
             }
         )
 
-        return self.async_show_form(step_id="init", data_schema=schema)
+        return self.async_show_form(
+            step_id="init",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={"panel_groups": groups_summary},
+        )
+
+    async def async_step_panel_group(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit or add a panel group."""
+        errors: dict[str, str] = {}
+        is_editing = self._group_index < len(self._original_groups)
+
+        if user_input is not None:
+            if is_editing:
+                if not user_input.get("delete_group", False):
+                    self._panel_groups.append(
+                        {
+                            CONF_TILT: user_input[CONF_TILT],
+                            CONF_AZIMUTH: user_input[CONF_AZIMUTH],
+                            CONF_POWER_KW: user_input[CONF_POWER_KW],
+                        }
+                    )
+                self._group_index += 1
+                if self._group_index < len(self._original_groups):
+                    return await self.async_step_panel_group()
+                if user_input.get("add_another", False):
+                    return await self.async_step_panel_group()
+                if not self._panel_groups:
+                    errors["base"] = "at_least_one_group"
+                    # Fall through to show the new-group form with error
+                else:
+                    return self._finish()
+            else:
+                self._panel_groups.append(
+                    {
+                        CONF_TILT: user_input[CONF_TILT],
+                        CONF_AZIMUTH: user_input[CONF_AZIMUTH],
+                        CONF_POWER_KW: user_input[CONF_POWER_KW],
+                    }
+                )
+                if user_input.get("add_another", False):
+                    return await self.async_step_panel_group()
+                return self._finish()
+
+        # Re-evaluate after potential index increment
+        is_editing = self._group_index < len(self._original_groups)
+
+        if is_editing:
+            src = self._original_groups[self._group_index]
+            tilt_d = src[CONF_TILT]
+            azimuth_d = src[CONF_AZIMUTH]
+            power_d = src[CONF_POWER_KW]
+            group_context = f"Editing group {self._group_index + 1} of {len(self._original_groups)}"
+        else:
+            tilt_d = DEFAULT_TILT
+            azimuth_d = DEFAULT_AZIMUTH
+            power_d = DEFAULT_POWER_KW
+            group_context = f"Adding new group {len(self._panel_groups) + 1}"
+
+        schema_fields: dict = {
+            vol.Required(CONF_TILT, default=tilt_d): vol.All(
+                vol.Coerce(float), vol.Range(min=0, max=90)
+            ),
+            vol.Required(CONF_AZIMUTH, default=azimuth_d): vol.All(
+                vol.Coerce(float), vol.Range(min=0, max=360)
+            ),
+            vol.Required(CONF_POWER_KW, default=power_d): vol.All(
+                vol.Coerce(float), vol.Range(min=0.1, max=1000)
+            ),
+        }
+        if is_editing:
+            schema_fields[vol.Optional("delete_group", default=False)] = bool
+        schema_fields[vol.Optional("add_another", default=False)] = bool
+
+        return self.async_show_form(
+            step_id="panel_group",
+            data_schema=vol.Schema(schema_fields),
+            errors=errors,
+            description_placeholders={
+                "group_context": group_context,
+                "azimuth_hint": "0=N, 90=E, 180=S (default), 270=W",
+                "tilt_hint": "0=flat, 90=vertical. Typical roof: 15–35°",
+            },
+        )
+
+    def _finish(self) -> FlowResult:
+        return self.async_create_entry(
+            title="",
+            data={**self._settings, CONF_PANEL_GROUPS: self._panel_groups},
+        )

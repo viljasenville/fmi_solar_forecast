@@ -43,6 +43,7 @@
     "step": {
       "init": {
         "title": "FMI Solar Forecast — Options",
+        "description": "**Configured panel groups:**\n{panel_groups}\n\nContinue to edit or add panel groups.",
         "data": {
           "name": "Name",
           "latitude": "Latitude",
@@ -51,7 +52,22 @@
           "default_albedo": "Ground reflectivity / albedo (0–1)",
           "update_interval": "Update interval (minutes)"
         }
+      },
+      "panel_group": {
+        "title": "FMI Solar Forecast — Panel Groups",
+        "description": "{group_context}\n\n**Tilt**: {tilt_hint}\n**Azimuth**: {azimuth_hint}",
+        "data": {
+          "tilt": "Tilt (degrees, 0–90)",
+          "azimuth": "Azimuth (degrees, 0–360)",
+          "power_kw": "Nominal power (kW)",
+          "delete_group": "Delete this group",
+          "add_another": "Add another panel group"
+        }
       }
+    },
+    "error": {
+      "outside_coverage": "The coordinates are outside FMI's forecast coverage area (lat 54–72°N, lon 4–32°E).",
+      "at_least_one_group": "At least one panel group is required. Add a new group below."
     }
   },
   "entity": {

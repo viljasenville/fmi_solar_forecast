@@ -1,0 +1,100 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "FMI-aurinkosääennuste — Sijainti",
+        "description": "Anna nimi ja koordinaatit aurinkovoimalaitoksellesi.\n\nKattavuusalue: {coverage}",
+        "data": {
+          "name": "Nimi",
+          "latitude": "Leveysaste",
+          "longitude": "Pituusaste"
+        }
+      },
+      "panel_group": {
+        "title": "FMI-aurinkosääennuste — Paneeliryhmä {group_num}",
+        "description": "Määritä paneeliryhmä.\n\n**Kallistus**: {tilt_hint}\n**Atsimuutti**: {azimuth_hint}",
+        "data": {
+          "group_name": "Ryhmän nimi",
+          "tilt": "Kallistus (astetta, 0–90)",
+          "azimuth": "Atsimuutti (astetta, 0–360)",
+          "power_kw": "Nimellinen teho (kW)",
+          "add_another": "Lisää toinen paneelijoukko"
+        }
+      },
+      "options": {
+        "title": "FMI-aurinkosääennuste — Lisäasetukset",
+        "description": "Nämä asetukset vaikuttavat fallback-laskentaan (clear-sky) ja päivitysväliin.",
+        "data": {
+          "default_air_temp": "Oletuslämpötila clear-sky-laskentaan (°C)",
+          "default_albedo": "Maan heijastuskerroin / albedo (0–1)",
+          "update_interval": "Päivitysväli (minuuttia)"
+        }
+      }
+    },
+    "error": {
+      "outside_coverage": "Koordinaatit ovat FMI:n ennustealueen ulkopuolella (lat 54–72°N, lon 4–32°E).",
+      "cannot_connect": "Yhteys FMI:n avoimeen dataan epäonnistui.",
+      "unknown": "Odottamaton virhe tapahtui."
+    },
+    "abort": {
+      "already_configured": "Tähän sijaintiin on jo määritetty FMI-aurinkosääennuste."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "FMI-aurinkosääennuste — Asetukset",
+        "description": "**Määritetyt paneeliryhmät:**\n{panel_groups}\n\nJatka muokkaamaan tai lisäämään paneelijoukkoja.",
+        "data": {
+          "name": "Nimi",
+          "latitude": "Leveysaste",
+          "longitude": "Pituusaste",
+          "default_air_temp": "Oletuslämpötila clear-sky-laskentaan (°C)",
+          "default_albedo": "Maan heijastuskerroin / albedo (0–1)",
+          "update_interval": "Päivitysväli (minuuttia)"
+        }
+      },
+      "panel_group": {
+        "title": "FMI-aurinkosääennuste — Paneeliryhmät",
+        "description": "{group_context}\n\n**Kallistus**: {tilt_hint}\n**Atsimuutti**: {azimuth_hint}",
+        "data": {
+          "group_name": "Ryhmän nimi",
+          "tilt": "Kallistus (astetta, 0–90)",
+          "azimuth": "Atsimuutti (astetta, 0–360)",
+          "power_kw": "Nimellinen teho (kW)",
+          "delete_group": "Poista tämä ryhmä",
+          "add_another": "Lisää toinen paneelijoukko"
+        }
+      }
+    },
+    "error": {
+      "outside_coverage": "Koordinaatit ovat FMI:n ennustealueen ulkopuolella (lat 54–72°N, lon 4–32°E).",
+      "at_least_one_group": "Vähintään yksi paneeliryhmä vaaditaan. Lisää uusi ryhmä alla."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "power_production_now": {
+        "name": "Teho nyt"
+      },
+      "energy_production_today": {
+        "name": "Energiantuotanto tänään"
+      },
+      "energy_production_tomorrow": {
+        "name": "Energiantuotanto huomenna"
+      },
+      "energy_next_hour": {
+        "name": "Seuraavan tunnin energia"
+      },
+      "peak_power_today": {
+        "name": "Huipputeho tänään"
+      },
+      "group_power_now": {
+        "name": "Teho nyt"
+      },
+      "group_energy_today": {
+        "name": "Energiantuotanto tänään"
+      }
+    }
+  }
+}

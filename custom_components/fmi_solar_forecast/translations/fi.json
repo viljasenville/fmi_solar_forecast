@@ -18,7 +18,7 @@
           "tilt": "Kallistus (astetta, 0–90)",
           "azimuth": "Atsimuutti (astetta, 0–360)",
           "power_kw": "Nimellinen teho (kW)",
-          "add_another": "Lisää toinen paneelijoukko"
+          "add_another": "Lisää toinen paneeliryhmä"
         }
       },
       "options": {
@@ -34,7 +34,7 @@
     "error": {
       "outside_coverage": "Koordinaatit ovat FMI:n ennustealueen ulkopuolella (lat 54–72°N, lon 4–32°E).",
       "cannot_connect": "Yhteys FMI:n avoimeen dataan epäonnistui.",
-      "unknown": "Odottamaton virhe tapahtui."
+      "unknown": "Tapahtui odottamaton virhe."
     },
     "abort": {
       "already_configured": "Tähän sijaintiin on jo määritetty FMI-aurinkosääennuste."
@@ -44,7 +44,7 @@
     "step": {
       "init": {
         "title": "FMI-aurinkosääennuste — Asetukset",
-        "description": "**Määritetyt paneeliryhmät:**\n{panel_groups}\n\nJatka muokkaamaan tai lisäämään paneelijoukkoja.",
+        "description": "**Määritetyt paneeliryhmät:**\n{panel_groups}\n\nJatka muokkaamaan tai lisäämään paneeliryhmiä.",
         "data": {
           "name": "Nimi",
           "latitude": "Leveysaste",
@@ -63,7 +63,7 @@
           "azimuth": "Atsimuutti (astetta, 0–360)",
           "power_kw": "Nimellinen teho (kW)",
           "delete_group": "Poista tämä ryhmä",
-          "add_another": "Lisää toinen paneelijoukko"
+          "add_another": "Lisää toinen paneeliryhmä"
         }
       }
     },

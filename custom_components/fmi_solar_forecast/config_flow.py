@@ -14,6 +14,7 @@ from .const import (
     CONF_AZIMUTH,
     CONF_DEFAULT_AIR_TEMP,
     CONF_DEFAULT_ALBEDO,
+    CONF_GROUP_NAME,
     CONF_LATITUDE,
     CONF_LONGITUDE,
     CONF_NAME,
@@ -38,8 +39,9 @@ def _format_groups_summary(groups: list[dict]) -> str:
         return "No panel groups configured."
     lines = []
     for i, g in enumerate(groups, 1):
+        name = g.get(CONF_GROUP_NAME) or f"Group {i}"
         lines.append(
-            f"Group {i}: {g[CONF_TILT]}° tilt, {g[CONF_AZIMUTH]}° azimuth, {g[CONF_POWER_KW]} kW"
+            f"{name}: {g[CONF_TILT]}° tilt, {g[CONF_AZIMUTH]}° azimuth, {g[CONF_POWER_KW]} kW"
         )
     return "\n".join(lines)
 
@@ -102,6 +104,7 @@ class FmiSolarForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             self._panel_groups.append(
                 {
+                    CONF_GROUP_NAME: user_input[CONF_GROUP_NAME],
                     CONF_TILT: user_input[CONF_TILT],
                     CONF_AZIMUTH: user_input[CONF_AZIMUTH],
                     CONF_POWER_KW: user_input[CONF_POWER_KW],
@@ -116,6 +119,7 @@ class FmiSolarForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         group_num = len(self._panel_groups) + 1
         schema = vol.Schema(
             {
+                vol.Required(CONF_GROUP_NAME, default=f"Group {group_num}"): str,
                 vol.Required(CONF_TILT, default=DEFAULT_TILT): vol.All(
                     vol.Coerce(float), vol.Range(min=0, max=90)
                 ),
@@ -261,6 +265,7 @@ class FmiSolarOptionsFlow(config_entries.OptionsFlow):
                 if not user_input.get("delete_group", False):
                     self._panel_groups.append(
                         {
+                            CONF_GROUP_NAME: user_input[CONF_GROUP_NAME],
                             CONF_TILT: user_input[CONF_TILT],
                             CONF_AZIMUTH: user_input[CONF_AZIMUTH],
                             CONF_POWER_KW: user_input[CONF_POWER_KW],
@@ -279,6 +284,7 @@ class FmiSolarOptionsFlow(config_entries.OptionsFlow):
             else:
                 self._panel_groups.append(
                     {
+                        CONF_GROUP_NAME: user_input[CONF_GROUP_NAME],
                         CONF_TILT: user_input[CONF_TILT],
                         CONF_AZIMUTH: user_input[CONF_AZIMUTH],
                         CONF_POWER_KW: user_input[CONF_POWER_KW],
@@ -293,17 +299,21 @@ class FmiSolarOptionsFlow(config_entries.OptionsFlow):
 
         if is_editing:
             src = self._original_groups[self._group_index]
+            name_d = src.get(CONF_GROUP_NAME, f"Group {self._group_index + 1}")
             tilt_d = src[CONF_TILT]
             azimuth_d = src[CONF_AZIMUTH]
             power_d = src[CONF_POWER_KW]
             group_context = f"Editing group {self._group_index + 1} of {len(self._original_groups)}"
         else:
+            new_num = len(self._panel_groups) + 1
+            name_d = f"Group {new_num}"
             tilt_d = DEFAULT_TILT
             azimuth_d = DEFAULT_AZIMUTH
             power_d = DEFAULT_POWER_KW
-            group_context = f"Adding new group {len(self._panel_groups) + 1}"
+            group_context = f"Adding new group {new_num}"
 
         schema_fields: dict = {
+            vol.Required(CONF_GROUP_NAME, default=name_d): str,
             vol.Required(CONF_TILT, default=tilt_d): vol.All(
                 vol.Coerce(float), vol.Range(min=0, max=90)
             ),

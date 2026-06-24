@@ -9,7 +9,8 @@ CONF_LONGITUDE = "longitude"
 CONF_TILT = "tilt"
 CONF_AZIMUTH = "azimuth"
 CONF_POWER_KW = "power_kw"
-CONF_PANEL_GROUPS = "panel_groups"  # list of {tilt, azimuth, power_kw}
+CONF_PANEL_GROUPS = "panel_groups"  # list of {name, tilt, azimuth, power_kw}
+CONF_GROUP_NAME = "group_name"
 
 # Option keys
 CONF_DEFAULT_AIR_TEMP = "default_air_temp"

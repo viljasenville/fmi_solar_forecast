@@ -266,6 +266,10 @@ class FmiSolarSensorEntity(
             return None
         return self.entity_description.state(self.coordinator.data)
 
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {"attribution": "Solar forecast powered by FMI"}
+
 
 class FmiSolarGroupSensorEntity(
     CoordinatorEntity[FmiSolarForecastCoordinator], SensorEntity
@@ -309,3 +313,7 @@ class FmiSolarGroupSensorEntity(
         if self.entity_description.state is None:
             return None
         return self.entity_description.state(self.coordinator.data, self._group_index)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {"attribution": "Solar forecast powered by FMI"}

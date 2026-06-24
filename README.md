@@ -67,6 +67,8 @@ For issues, feature requests, or contributions, please visit the [GitHub reposit
 
 This integration uses the [FMI Open PV Forecast](https://github.com/fmidev/fmi-open-pv-forecast-packaged) library and services provided by the Finnish Meteorological Institute.
 
+The FMI logo used as the integration icon is the property of the Finnish Meteorological Institute (Ilmatieteen laitos). All rights to the logo belong to FMI.
+
 ## License
 
 This project is licensed under the Apache 2.0 License - see the LICENSE file for details.

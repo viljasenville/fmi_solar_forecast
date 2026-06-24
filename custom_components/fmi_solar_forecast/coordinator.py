@@ -128,7 +128,14 @@ class FmiSolarForecastCoordinator(DataUpdateCoordinator):
         now_utc = datetime.now(tz=timezone.utc)
         today_utc = now_utc.date()
 
-        forecast_dts = {slot["datetime"] for slot in result.get("forecast", [])}
+        # Only claim slots where the API returned real data (power_w > 0).
+        # The API time series can include past hours with 0W (outside its 3-6h
+        # retrospective window); those must not block genuine history values.
+        forecast_dts = {
+            slot["datetime"]
+            for slot in result.get("forecast", [])
+            if slot["power_w"] > 0
+        }
         extra_w_sum = 0.0
         extra_peak_w = 0.0
         for dt_str, power_w in history.items():

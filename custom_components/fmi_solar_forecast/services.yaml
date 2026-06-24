@@ -1,0 +1,11 @@
+clear_history:
+  name: Clear history
+  description: Clears the persisted solar forecast history. The energy dashboard will no longer show past data until new history accumulates.
+  fields:
+    config_entry_id:
+      name: FMI solar forecast instance
+      description: Which solar forecast instance to clear. Leave empty to clear all.
+      required: false
+      selector:
+        config_entry:
+          integration: fmi_solar_forecast

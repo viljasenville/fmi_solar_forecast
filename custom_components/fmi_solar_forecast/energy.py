@@ -27,14 +27,16 @@ async def async_get_solar_forecast(
     if not hasattr(coordinator, "data") or coordinator.data is None:
         return None
 
-    forecast: list[dict] = coordinator.data.get("forecast", [])
-    if not forecast:
+    # Start with persisted history (up to 30 days back)
+    wh_hours: dict[str, float] = dict(await coordinator.async_get_history())
+
+    # Overlay current (future) forecast on top
+    for slot in coordinator.data.get("forecast", []):
+        power = slot.get("power_w", 0.0)
+        if power > 0:
+            wh_hours[slot["datetime"]] = power
+
+    if not wh_hours:
         return None
 
-    return {
-        "wh_hours": {
-            slot["datetime"]: slot["power_w"]
-            for slot in forecast
-            if slot.get("power_w", 0.0) > 0
-        }
-    }
+    return {"wh_hours": wh_hours}

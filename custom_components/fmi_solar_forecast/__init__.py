@@ -3,9 +3,12 @@ from __future__ import annotations
 
 import logging
 
+import voluptuous as vol
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN
 from .coordinator import FmiSolarForecastCoordinator
@@ -13,6 +16,11 @@ from .coordinator import FmiSolarForecastCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
+
+SERVICE_CLEAR_HISTORY = "clear_history"
+_ATTR_ENTRY_ID = "config_entry_id"
+
+_CLEAR_HISTORY_SCHEMA = vol.Schema({vol.Optional(_ATTR_ENTRY_ID): cv.string})
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -25,6 +33,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_update_options))
+
+    if not hass.services.has_service(DOMAIN, SERVICE_CLEAR_HISTORY):
+
+        async def _handle_clear_history(call: ServiceCall) -> None:
+            entry_id: str | None = call.data.get(_ATTR_ENTRY_ID)
+            coordinators: dict[str, FmiSolarForecastCoordinator] = hass.data.get(DOMAIN, {})
+            targets = (
+                [coordinators[entry_id]]
+                if entry_id and entry_id in coordinators
+                else list(coordinators.values())
+            )
+            for coord in targets:
+                await coord.async_clear_history()
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_CLEAR_HISTORY,
+            _handle_clear_history,
+            schema=_CLEAR_HISTORY_SCHEMA,
+        )
+
     return True
 
 
@@ -32,6 +61,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         hass.data[DOMAIN].pop(entry.entry_id)
+        if not hass.data.get(DOMAIN):
+            hass.services.async_remove(DOMAIN, SERVICE_CLEAR_HISTORY)
     return unload_ok
 
 

@@ -8,6 +8,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
@@ -32,12 +33,19 @@ _LOGGER = logging.getLogger(__name__)
 _PVFC_LOCK = threading.Lock()
 
 
+def _parse_dt(dt_str: str) -> datetime:
+    """Parse an ISO datetime string and ensure it is UTC-aware."""
+    dt = datetime.fromisoformat(dt_str)
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+
 class FmiSolarForecastCoordinator(DataUpdateCoordinator):
     """Coordinator that fetches and caches FMI solar forecast data."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the coordinator."""
         self.entry = entry
+        self._store: Store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.history")
         update_interval = timedelta(
             minutes=entry.data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
         )
@@ -48,8 +56,50 @@ class FmiSolarForecastCoordinator(DataUpdateCoordinator):
             update_interval=update_interval,
         )
 
+    async def async_get_history(self) -> dict[str, float]:
+        """Return persisted history as {iso_datetime: power_w}."""
+        stored = await self._store.async_load() or {}
+        return stored.get("wh_hours", {})
+
+    async def async_clear_history(self) -> None:
+        """Wipe the persisted history store."""
+        await self._store.async_save({"wh_hours": {}})
+        _LOGGER.info("Solar forecast history cleared for entry %s", self.entry.entry_id)
+
+    async def _async_archive_past_slots(self) -> None:
+        """Persist forecast slots that have now passed into the history store."""
+        if not self.data:
+            return
+
+        now_utc = datetime.now(tz=timezone.utc)
+        cutoff = now_utc - timedelta(days=30)
+
+        stored = await self._store.async_load() or {}
+        history: dict[str, float] = stored.get("wh_hours", {})
+
+        for slot in self.data.get("forecast", []):
+            dt_str: str = slot["datetime"]
+            try:
+                dt = datetime.fromisoformat(dt_str)
+            except ValueError:
+                continue
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            if cutoff <= dt < now_utc:
+                history[dt_str] = slot["power_w"]
+
+        # Prune entries older than 30 days
+        history = {
+            k: v
+            for k, v in history.items()
+            if _parse_dt(k) >= cutoff
+        }
+
+        await self._store.async_save({"wh_hours": history})
+
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch fresh forecast data from FMI in a thread-safe executor job."""
+        await self._async_archive_past_slots()
         try:
             return await self.hass.async_add_executor_job(self._fetch_forecast)
         except Exception as err:

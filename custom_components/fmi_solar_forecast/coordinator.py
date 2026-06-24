@@ -160,7 +160,7 @@ class FmiSolarForecastCoordinator(DataUpdateCoordinator):
             gh = group_history.get(str(gi), {})
             if not gh:
                 continue
-            existing_dts = set(group_data["forecast_w"])
+            existing_dts = {dt_str for dt_str, w in group_data["forecast_w"].items() if w > 0}
             for dt_str, w in gh.items():
                 if dt_str in existing_dts:
                     continue

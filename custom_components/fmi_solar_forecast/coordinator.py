@@ -63,7 +63,7 @@ class FmiSolarForecastCoordinator(DataUpdateCoordinator):
 
     async def async_clear_history(self) -> None:
         """Wipe the persisted history store."""
-        await self._store.async_save({"wh_hours": {}})
+        await self._store.async_save({"wh_hours": {}, "group_wh_hours": {}})
         _LOGGER.info("Solar forecast history cleared for entry %s", self.entry.entry_id)
 
     async def _async_archive_past_slots(self) -> None:
@@ -76,6 +76,7 @@ class FmiSolarForecastCoordinator(DataUpdateCoordinator):
 
         stored = await self._store.async_load() or {}
         history: dict[str, float] = stored.get("wh_hours", {})
+        group_history: dict[str, dict[str, float]] = stored.get("group_wh_hours", {})
 
         for slot in self.data.get("forecast", []):
             dt_str: str = slot["datetime"]
@@ -88,22 +89,79 @@ class FmiSolarForecastCoordinator(DataUpdateCoordinator):
             if cutoff <= dt < now_utc:
                 history[dt_str] = slot["power_w"]
 
+        for gi, group_data in enumerate(self.data.get("panel_groups", [])):
+            gh = group_history.setdefault(str(gi), {})
+            for dt_str, w in group_data.get("forecast_w", {}).items():
+                try:
+                    dt = _parse_dt(dt_str)
+                except ValueError:
+                    continue
+                if cutoff <= dt < now_utc:
+                    gh[dt_str] = w
+
         # Prune entries older than 30 days
-        history = {
-            k: v
-            for k, v in history.items()
-            if _parse_dt(k) >= cutoff
+        history = {k: v for k, v in history.items() if _parse_dt(k) >= cutoff}
+        group_history = {
+            gi: {k: v for k, v in gh.items() if _parse_dt(k) >= cutoff}
+            for gi, gh in group_history.items()
         }
 
-        await self._store.async_save({"wh_hours": history})
+        await self._store.async_save({"wh_hours": history, "group_wh_hours": group_history})
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch fresh forecast data from FMI in a thread-safe executor job."""
         await self._async_archive_past_slots()
         try:
-            return await self.hass.async_add_executor_job(self._fetch_forecast)
+            result = await self.hass.async_add_executor_job(self._fetch_forecast)
         except Exception as err:
             raise UpdateFailed(f"FMI forecast update failed: {err}") from err
+
+        # The FMI forecast only contains future slots, so today_energy_kwh,
+        # peak_today_w, and per-group forecast_w shrink as the day progresses.
+        # Re-inject past-of-today slots from the history store.
+        stored = await self._store.async_load() or {}
+        history: dict[str, float] = stored.get("wh_hours", {})
+        group_history: dict[str, dict[str, float]] = stored.get("group_wh_hours", {})
+        now_utc = datetime.now(tz=timezone.utc)
+        today_utc = now_utc.date()
+
+        forecast_dts = {slot["datetime"] for slot in result.get("forecast", [])}
+        extra_w_sum = 0.0
+        extra_peak_w = 0.0
+        for dt_str, power_w in history.items():
+            if dt_str in forecast_dts:
+                continue
+            try:
+                dt = _parse_dt(dt_str)
+            except ValueError:
+                continue
+            if dt.date() == today_utc:
+                extra_w_sum += power_w
+                extra_peak_w = max(extra_peak_w, power_w)
+
+        result["today_energy_kwh"] = round(
+            result["today_energy_kwh"] + extra_w_sum / 1000.0, 3
+        )
+        result["peak_today_w"] = round(
+            max(result["peak_today_w"], extra_peak_w), 1
+        )
+
+        for gi, group_data in enumerate(result.get("panel_groups", [])):
+            gh = group_history.get(str(gi), {})
+            if not gh:
+                continue
+            existing_dts = set(group_data["forecast_w"])
+            for dt_str, w in gh.items():
+                if dt_str in existing_dts:
+                    continue
+                try:
+                    dt = _parse_dt(dt_str)
+                except ValueError:
+                    continue
+                if dt.date() == today_utc:
+                    group_data["forecast_w"][dt_str] = w
+
+        return result
 
     def _fetch_forecast(self) -> dict[str, Any]:
         """Blocking forecast fetch — runs in executor, protected by a global lock."""

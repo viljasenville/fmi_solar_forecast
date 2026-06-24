@@ -62,6 +62,23 @@ def _tomorrow_energy(data: dict) -> float:
 def _peak_today(data: dict) -> float:
     return data.get("peak_today_w", 0.0)
 
+def _remaining_today_energy(data: dict) -> float:
+    now = datetime.now(tz=timezone.utc)
+    today = now.date()
+    total = 0.0
+    for slot in data.get("forecast", []):
+        try:
+            slot_dt = datetime.fromisoformat(slot["datetime"])
+            if slot_dt.tzinfo is None:
+                slot_dt = slot_dt.replace(tzinfo=timezone.utc)
+        except (ValueError, KeyError):
+            continue
+        if slot_dt.date() == today and slot_dt >= now:
+            w = slot.get("power_w", 0.0)
+            if w > 0:
+                total += w
+    return round(total, 1)
+
 def _next_hour_energy(data: dict) -> float:
     now = datetime.now(tz=timezone.utc)
     for slot in data.get("forecast", []):
@@ -139,6 +156,15 @@ SENSORS: tuple[FmiSolarSensorDescription, ...] = (
         key="energy_production_tomorrow",
         translation_key="energy_production_tomorrow",
         state=_tomorrow_energy,
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+        suggested_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=1,
+    ),
+    FmiSolarSensorDescription(
+        key="energy_remaining_today",
+        translation_key="energy_remaining_today",
+        state=_remaining_today_energy,
         device_class=SensorDeviceClass.ENERGY,
         native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
         suggested_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,

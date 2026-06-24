@@ -83,6 +83,9 @@
       "energy_production_tomorrow": {
         "name": "Energy production tomorrow"
       },
+      "energy_remaining_today": {
+        "name": "Energy production remaining today"
+      },
       "energy_next_hour": {
         "name": "Energy next hour"
       },

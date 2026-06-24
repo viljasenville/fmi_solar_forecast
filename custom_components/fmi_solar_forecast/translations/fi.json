@@ -83,6 +83,9 @@
       "energy_production_tomorrow": {
         "name": "Energiantuotanto huomenna"
       },
+      "energy_remaining_today": {
+        "name": "Jäljellä oleva energiantuotanto tänään"
+      },
       "energy_next_hour": {
         "name": "Seuraavan tunnin energia"
       },

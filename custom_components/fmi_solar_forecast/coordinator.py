@@ -214,7 +214,7 @@ class FmiSolarForecastCoordinator(DataUpdateCoordinator):
                         "azimuth": group["azimuth"],
                         "power_kw": group["power_kw"],
                         "forecast_w": {
-                            str(ts): round(float(w), 2)
+                            (ts if ts.tzinfo is not None else ts.replace(tzinfo=timezone.utc)).isoformat(): round(float(w), 2)
                             for ts, w in output_series.items()
                         },
                     }

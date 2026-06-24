@@ -100,7 +100,7 @@ class FmiSolarForecastCoordinator(DataUpdateCoordinator):
                 except ValueError:
                     continue
                 if cutoff <= dt < now_utc and w > 0:
-                    gh[dt_str] = w
+                    gh[dt.isoformat()] = w
 
         # Prune entries older than 30 days
         history = {k: v for k, v in history.items() if _parse_dt(k) >= cutoff}

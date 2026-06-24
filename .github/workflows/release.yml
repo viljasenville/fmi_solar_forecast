@@ -8,31 +8,32 @@ jobs:
   release:
     name: Create Release ZIP
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Get version from tag
         id: version
-        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"  # Remove 'v' prefix if present
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Update manifest version
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          VERSION="${VERSION#v}"  # Remove 'v' prefix if present
           sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" custom_components/fmi_solar_forecast/manifest.json
 
       - name: Create ZIP file
         run: |
           cd custom_components/fmi_solar_forecast/
-          zip ../../fmi_solar_forecast.zip ./* -x '.*'
+          zip -r ../../fmi_solar_forecast.zip . -x '.*'
 
       - name: Upload ZIP to release
-        uses: JasonEtco/upload-to-release@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
-          args: ./fmi_solar_forecast.zip application/zip     
+          files: ./fmi_solar_forecast.zip
 
       - name: Update HACS repository
         run: |

@@ -80,14 +80,17 @@ class FmiSolarForecastCoordinator(DataUpdateCoordinator):
 
         for slot in self.data.get("forecast", []):
             dt_str: str = slot["datetime"]
+            power_w = slot["power_w"]
             try:
                 dt = datetime.fromisoformat(dt_str)
             except ValueError:
                 continue
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
-            if cutoff <= dt < now_utc:
-                history[dt_str] = slot["power_w"]
+            # Only write non-zero values: the FMI API returns 0.0 for past
+            # hours it no longer forecasts, which would overwrite valid history.
+            if cutoff <= dt < now_utc and power_w > 0:
+                history[dt_str] = power_w
 
         for gi, group_data in enumerate(self.data.get("panel_groups", [])):
             gh = group_history.setdefault(str(gi), {})
@@ -96,7 +99,7 @@ class FmiSolarForecastCoordinator(DataUpdateCoordinator):
                     dt = _parse_dt(dt_str)
                 except ValueError:
                     continue
-                if cutoff <= dt < now_utc:
+                if cutoff <= dt < now_utc and w > 0:
                     gh[dt_str] = w
 
         # Prune entries older than 30 days
